@@ -1,0 +1,3 @@
+		
+
+	-> Quick Sort - pivô é sempre o ultimo elemento do vetor

@@ -1,0 +1,28 @@
+Performance dos algoritmos: tempo de execução
+Espaço utilizado: memória utilizada 
+Estabiidade: é estavel se ele preserva a ordem relativa das 
+	     chaves de valor igual no arquivo.				Lembrar a professora de mostrar como forçar a estabilidade
+
+
+
+Alg de ordenação
+
+	-> Selection Sort:  primeiro encontre omenor elemento no arranjo e troque-o com o elemento na primeira posição.
+			    Depois, encontre o segundo menor elemento do arranjo e troque-o com 
+			    o elemento na segunda posição. Continue o processo até que todo o arranjo esteja ordenado.
+
+	-> Insertion Sort:  Considere um elemento por vez, insira cada carta em sua posicao correta
+			    entre os elementos já considerados de forma a mante-los ordenados
+			    Para movimentar, basta movimentar os elementos maiores dentre aqueles ja ordenados
+			    uma posicao para a direita e, entao inserir o elemento considerado na posicao vaga resultante.
+
+	-> Bubble Sort:     Percorre de trás pra frente, com o i no final e j no próximo elemento ao primeiro
+			    e a troca e verificaçao é feita de dois a dois, em que o ultimo elemento verificado é
+			    sempre o maior elemento do vetor.
+
+	-> Merge Sort:      É assintóticamente mais eficiente que que os outros algorítmos, porém é pior para entradas
+   Dividir para Comquistar  menores. Nele ocorre a divisão do vetor pela metade, após isso é chamado o Merge Sort novamente
+			    onde verifica-se se este caso é um caso trivial (com 1 elemento), e divide-se novamente, onde 
+			    ocorre a chamada do algoritmo novamente e assim por diante, até chegar no caso trivial (com 1 elemento).
+
+	->

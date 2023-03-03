@@ -1,0 +1,4 @@
+rotação dupla a esquerda = rot simples a direita seguida de uma simples a esquerda
+rotação dupla a direita = rot simples a esquerda seguida de uma simples a direita
+
+
