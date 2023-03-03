@@ -1,0 +1,69 @@
+PARSER_BEGIN(Calculadora)
+
+public class Calculadora{
+	public static void main(String args[]) throws ParseException{
+		Calculadora Calc = new Calculadora(System.in);
+		Calc.Inicio();
+	}
+}
+
+PARSER_END(Calculadora)
+
+SKIP: {" " | "\n" | "\t"}
+
+// Alfabeto e expressões
+
+TOKEN : {
+	
+	<AP: "(">
+	{
+	System.out.println("Parenteses: "+image);
+	}
+	|
+	<FP: ")">
+	{
+	System.out.println("Parenteses: "+image);
+	}
+	|
+	<SINAL: "-"|"+">
+	{
+	System.out.println("Sinal: "+image);
+	}
+	|
+	<PONTO: ".">
+	{
+	System.out.println("Ponto: "+image);
+	}
+	|
+	<NUM: <DIGITO>|<DIGITO><PONTO><DIGITO>|<PONTO><DIGITO>|<DIGITO><PONTO> >
+	{
+	System.out.println("Numero: "+image);
+	}
+	|
+
+	<DIGITO: (["0"-"9"])+>
+	|
+	<OP: "^"|"*"|"/">
+	{
+	System.out.println("Operador: "+image);
+	}
+}
+
+// Regras de Produção
+
+void Inicio():{}
+{
+	Expressao()	<EOF>
+}
+
+void Expressao():{}
+{
+	Termo()((<OP>|<SINAL>) Termo())*
+}
+
+void Termo():{}
+{
+	<AP>Expressao()<FP>
+	|
+	(<SINAL>)?<NUM>
+}
