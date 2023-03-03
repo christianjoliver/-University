@@ -1,0 +1,230 @@
+PARSER_BEGIN(Calcula)
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+
+class Calcula
+{
+  static Tabelas Tabela = new Tabelas (); // Para o gerenciamento de variáveis
+  
+  public static void main (String[] args) throws ParseException
+  {
+     try
+     {
+      Calcula analisador = new Calcula (System.in);
+      analisador.Programa();
+      System.out.println("Compilado....");
+     }
+      
+    catch(TokenMgrError e) {
+        System.err.println("Lexical Error:\n" + e.getMessage()); 
+    }
+    catch(ParseException e) {
+        System.err.println("Syntactic Error:\n" + e.getMessage());
+    }
+    catch(Exception e) {
+        System.err.println("Semantic error:\n" + e.getMessage()  );  
+        e.printStackTrace();
+  }
+  }
+}
+PARSER_END(Calcula)
+
+TOKEN:
+{
+
+  <IDENTIFICADOR: <LETRA> (<LETRA>|<NUM>)* >
+    {
+      //System.out.println("Identificador: "+image);
+    }
+
+  |
+
+  <LETRA: (["a"-"z"] |  ["A"-"Z"]) >
+    {
+      //System.out.println("Letra: "+image);
+    }
+
+  |
+
+  <A: "(">
+    {
+      //System.out.println("Abre Parenteses: "+image);
+    }
+
+  |
+
+  <F: ")">
+    {
+      //System.out.println("Fecha Parenteses: "+image);
+    }
+
+  |
+
+  <AD: "+" | "-">
+    {
+      //System.out.println("Sinal/Operador: "+image);
+    }
+
+  |
+
+  <MUL: "*" | "/">
+    {
+      //System.out.println("Operador: "+image);
+    }
+
+  |
+
+  <OP1: "^">
+    {
+      //System.out.println("Operador Especial: "+image);
+    } 
+
+  |
+
+  <OP2: "#">
+    {
+      //System.out.println("Operador Especial: "+image);
+    } 
+
+  |
+
+  <NUM: <DIGITO>|<DIGITO><PONTO><DIGITO>|<PONTO><DIGITO>>
+    {
+      //System.out.println("Numero: "+image);
+    }
+
+  |
+
+  <DIGITO: (["0"-"9"])+>
+    {
+      //System.out.println("Digito: "+image);
+    }
+
+  |
+
+  <PONTO: "." >
+
+  |
+
+  <ATRIB: "=">
+  
+  |
+  
+  <NOVALINHA: "\n">
+  
+}
+
+
+SKIP:
+{
+" "|"\r"|"\t"
+}
+
+
+///////////////////////////////////////////////////////// 
+    //Tabela.imprime();
+void Programa():{Token t; double a;} 
+{
+  (a = exp() (<NOVALINHA>|<EOF>)
+  {
+    System.out.println("Resultado = "+a);
+  })*
+}
+/////////////////////////////////////////////////////////
+
+// soma e subtracao
+double exp():{double a,b=0.00; Token t=null; Token id=null; double valor;}
+{
+  // neste caso "t" pode não estar inserido na tabela, dai trata-se a atribuicao
+  LOOKAHEAD(2)
+  id = <IDENTIFICADOR><ATRIB> a = exp()
+  {Tabela.insere(id.image, Double.toString(a), ""); return a;}
+  |
+  
+  a = termo1()(t = <AD> b=termo1()
+  {
+    if(t.image.equals("-"))
+      a = a-b;
+    else
+      a = a+b;
+  }
+  )*
+  {return a;}
+}
+
+
+// multiplicacao e divisao
+double termo1():{double a,b=1.00; Token t=null;}
+{
+
+  a = termo2()(t = <MUL> b = termo2()
+  {
+    if(t.image.equals("*"))
+      a = a*b;
+    else if(t.image.equals("/"))
+      a = a/b;
+  }
+  )*
+
+  {return a;}
+}
+
+
+
+// potencia e raiz
+double termo2():{double a,b=1.00; Token t=null;}
+{
+  t = <OP2> a = fator()
+  {
+    if(t.image.equals("#"))
+      a = Math.sqrt(a);
+  }
+  {return a;}
+
+  |
+  
+  LOOKAHEAD(3)
+  a = fator()(t = <OP1> b=fator()
+  {
+    if(t.image.equals("^"))
+      a = Math.pow(a, b);
+  }
+  )*
+  
+  {return a;}
+}
+
+
+// termo numerico e abre/fecha parentese
+double fator():{double e; double b; Token numero = null; Token sinal; Token t; Token valor; String aux;}
+{
+
+  <A>e = exp()<F>
+  {return e;}
+
+  |
+  
+  // neste caso "t" pode ja estar inserido na tabela, dai trata-se a operacao com variavel
+  t = <IDENTIFICADOR>
+  {
+    aux = Tabela.buscaVar(t.image); 
+    return Double.parseDouble(aux);
+  }
+ 
+  |
+
+  numero = <NUM>
+  {return Double.parseDouble(numero.image);}
+
+  |
+
+  sinal = <AD>numero = <NUM>
+  {
+    if(sinal.image.equals("-"))
+      e = -1.0*Double.parseDouble(numero.image);
+    else
+      e = Double.parseDouble(numero.image);
+    return e;
+  }
+}

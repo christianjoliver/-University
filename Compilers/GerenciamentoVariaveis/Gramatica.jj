@@ -1,0 +1,435 @@
+options
+{
+  static = false;
+}
+PARSER_BEGIN(Gramatica)
+import java.io.*;
+
+class Gramatica
+{    
+  static Tabelas Tabela = new Tabelas (); // Para o gerenciamento de variáveis
+  public static void main (String[] args) throws ParseException
+  {  
+   try
+   {      
+    Gramatica analisador = new Gramatica (System.in);
+    analisador.Programa();
+    System.out.println("Compilado....");
+  }   
+  catch(TokenMgrError e) {
+  System.err.println("Lexical Error:\n" + e.getMessage()); 
+ }
+  catch(ParseException e) {
+  System.err.println("Syntactic Error:\n" + e.getMessage());
+  }
+  catch(Exception e) {
+  System.err.println("Semantic error:\n" + e.getMessage()  );  
+  e.printStackTrace();
+  }
+ }  
+}
+
+PARSER_END(Gramatica)
+
+
+TOKEN: /* Elementos relacionais e booleanos   */
+{
+
+  <RELACIONAIS: ">" | "<" | "<=" | ">=" | "==" | "!=" >
+  |
+  <BOOL_A: "||" | "|" | "Xor">
+  |
+  <NEGACAO: "~">
+  |
+  <BOOL_B:  "&&" | "&" >
+  |
+  <SENTENCA_BOOLEANA: "true" | "false"  >
+}
+
+
+TOKEN: /* Condicionais como if-else entre outros  */
+{ 
+  <IF: "if" >
+  |
+  <THEN: "then" >
+  |
+  <ELSE: "else" >
+  |
+  <WHILE: "while" >
+  |
+  <REPEAT: "repeat">
+  |
+  <DO: "do" >
+  |
+  <FOR: "for">
+  |
+  <UNTIL: "until">
+}
+
+
+TOKEN: /* Elementos gerais como tipos de variáveis, identificadores, números e entre outros.  */
+{
+
+  <INICIO: "$BEGIN_PROGRAM">
+  |
+  <FIM: "$END_PROGRAM">
+  |
+  <TIPO: "INT" | "FLOAT" | "BYTE" | "DOUBLE" | "BOOL" | "CHAR" | "STRING" | "LONG">
+  |
+  <IDENTIFICADOR: <LETRA> (<LETRA>|<DIGITO>)* >
+  |
+  <PALAVRA: "\'"(<DIGITO>|<LETRA>|" "<DIGITO>)*"\'">
+  |
+  <LETRA: (["a"-"z"] |  ["A"-"Z"]) >
+  |
+  <NUM: <DIGITO><PONTO><DIGITO>|(<SINAL>)?<PONTO><DIGITO>|<DIGITO><PONTO>>
+  |
+  <DIGITO: (<SINAL>)? (["0"-"9"])+> 
+  |
+  <SINAL: "-" | "+">
+  |
+  <PONTO: "." >
+  |
+  <ATRIB: "=">
+  |
+  <ATRIBTERNARIO: ":=">
+  |
+  <PERGTERNARIO: "?">
+  |
+  <DP: ":">
+  |
+  <PV: ";">
+  |
+  <AP: "(" >
+  |
+  <FP: ")" >
+  |
+  <AC: "{" >
+  |
+  <FC: "}" >
+}
+
+
+SKIP:
+{
+" " | "\r\n" | "\t"
+}
+
+//////////////////////////////////INICIO//////////////////////////////
+void Programa():{}
+{
+  <INICIO>Variaveis()(Comandos(true))*<FIM><EOF>
+  {Tabela.imprime();}
+}
+
+
+//////////////////////////////////////////////////////////////////////
+void Variaveis():{Token var=null, tipo=null;}
+{
+  ( tipo = <TIPO> var=<IDENTIFICADOR>
+
+  {
+  if (tipo.image.equals("STRING")) 
+    Tabela.insere (var.image, "null",tipo.image) ; 
+  else if (tipo.image.equals("BOOL"))
+    Tabela.insere (var.image, "false",tipo.image); 
+  else
+    Tabela.insere (var.image, "0", tipo.image) ;
+  }
+
+  )+  
+}
+
+
+//////////////////////////////////////////////////////////////////////
+void Comandos(boolean valida):{}
+{   
+    LOOKAHEAD(3)
+    Atribuicao(valida)
+    |
+    Ternario(valida)
+    |
+    Condicional()
+    |
+    Iterativo()
+}
+
+//////////////////////////////////////////////////////////////////////
+
+
+void Iterativo():{Token t = null; boolean valida = true;}
+{
+
+  (<WHILE> <AP> t = Expressao() <FP> <DO> <AC>
+  (Comandos(valida))+ <FC>)
+
+  |
+  (<REPEAT><AC> (Comandos(valida))+ <FC> <UNTIL> <AP> t=Expressao() <FP>)
+
+  |
+  <DO><AC> (Comandos(valida))+ <FC> <WHILE><AP> t = Expressao() <FP>
+
+  |
+  <FOR> <AP><IDENTIFICADOR><ATRIB><DIGITO><PV> 
+  t = Expressao() <PV> <IDENTIFICADOR> <SINAL> <SINAL><FP><AC> (Comandos(valida))+ <FC>
+}
+
+
+//////////////////////////////////////////////////////////////////////
+
+void Condicional():{Token t=null; boolean valida=true;}
+{
+  //ANALISE SINTATICA
+  //tratamento do if (a&&b == b/a>b/...) then {acao1} else {acao2}
+  <IF> <AP> t = Expressao() <FP> <THEN> <AC>
+  {
+    if(t.image.equals("true"))
+      valida = true;
+    else
+      valida = false;
+  }
+
+  (Comandos(valida))+ <FC> (<ELSE> <AC> (Comandos(!valida))+)?<FC>
+}
+
+//////////////////////////////////////////////////////////////////////
+
+Token Expressao():{Token tk=null, n=null, d=null; boolean a=false, b=true;}
+{
+  //ANALISE SEMANTICA
+  tk = termo_Alfa() (n = <BOOL_A> d = termo_Alfa()
+    {
+      if(n!=null)
+      {
+        if(tk.image.equals("true"))
+          a=true;
+        else
+          a=false;
+        if(d.image.equals("true"))
+          b=true;
+        else
+          b=false;
+
+        a = a||b;
+      }
+
+      if(a)
+        tk.image="true";
+      else
+        tk.image="false";
+    }
+
+    )*
+
+  {return tk;}
+}
+
+//////////////////////////////////////////////////////////////////////
+
+Token termo_Alfa():{Token tk=null, m=null, d=null, r=null; boolean a=true, b=true; double num_a=0.00, num_b=0.00;}
+{
+  tk=termo_Beta() (m=<BOOL_B> d=termo_Beta()
+  {
+    if(m!=null)
+    {
+      if(tk.image.equals("true"))
+        a=true;
+      else
+        a=false;
+
+      if(d.image.equals("true"))
+        b=true;
+      else
+        b=false;      
+
+      a=a&&b;
+    }
+ 
+    if(a)
+      tk.image = "true";
+    else
+      tk.image = "false";
+  }
+  )*
+  {return tk;}
+}
+
+//////////////////////////////////////////////////////////////////////
+
+
+Token termo_Beta():{Token tk=null, d=null, r=null; boolean a=true; double num_a=0.00, num_b=0.00; String bal="a", bel="a";}
+{
+  tk=fator()(r = <RELACIONAIS> d=fator()
+  {
+  
+  if(r!=null)    
+      {
+        boolean isNumeric = tk.image.matches("[+-]?\\d*(\\.\\d+)?"); //Comando que verifica se eh numero
+        if(isNumeric)
+        {
+          num_a = Double.parseDouble(tk.image);
+          num_b = Double.parseDouble(d.image);
+
+          if(r.image.equals(">=") || r.image.equals(">")){
+           a = num_a>=num_b;
+          }
+
+         else if(r.image.equals("<=") || r.image.equals("<")){
+           a = num_a<=num_b;
+          }
+
+          else if(r.image.equals("==")){
+            a = num_a==num_b;
+          }
+
+          else if(r.image.equals("!=")){
+            a = num_a!=num_b;
+          }
+        }
+
+        else if(r.image.equals("=="))
+          a = tk.image.equals(d.image);
+
+        else if(r.image.equals("!="))
+          a = !tk.image.equals(d.image);
+      }
+  if(a)
+    tk.image = "true";
+  else
+    tk.image = "false";
+  }
+  )*
+  {return tk;}
+}
+
+//////////////////////////////////////////////////////////////////////
+
+Token fator():{Token num=null, bool=null, n1=null, flutuante = null, string = null, var=null; String valor, tipo;}
+{
+  
+  (n1=<NEGACAO>)? var = <IDENTIFICADOR> //precisa de pesquisa na tabela de simbolos
+  {
+    valor = Tabela.searchValue(var.image);
+
+    if(n1!=null)
+    {
+      tipo = Tabela.searchTipe(var.image);
+      if(tipo.equals("BOOL"))
+        if(valor.equals("true"))
+          var.image="false";
+        else
+          var.image="true";
+    }
+    else if(valor!="")
+      var.image=valor;
+
+    return var;
+  }
+
+  |
+  num = <DIGITO> {return num;}
+  | 
+  flutuante = <NUM> {return flutuante;}
+  |
+  bool = <SENTENCA_BOOLEANA>{return bool;}
+  |
+  string = <PALAVRA> {return string;}
+}
+
+//////////////////////////////////////////////////////////////////////
+
+
+void Ternario(boolean valida):{Token var=null, exp=null;}
+{
+  var = <IDENTIFICADOR> <ATRIBTERNARIO> exp = Expressao() <PERGTERNARIO>
+  {
+  if(exp.image.equals("true"))
+      valida=true;
+    else
+      valida=false;
+  }
+  Aux(valida, var) <DP> Aux(!valida, var)
+}
+
+//////////////////////////////////////////////////////////////////////
+
+
+void Atribuicao(boolean valida):{Token var=null;}
+{
+  var = <IDENTIFICADOR>(<ATRIB>) Aux(valida, var)
+}
+
+
+//////////////////////////////////////////////////////////////////////
+void Aux(boolean valida, Token var):{Token valor=null, flutuante = null, bool=null, ident=null, nome=null; String result=null, result2=null;}
+{
+  (valor = <DIGITO>
+      {
+        result = Tabela.searchTipe(var.image);
+        if(result.equals("INT") && valida)
+          Tabela.insere(var.image, valor.image, "INT");
+        else if (valida)
+        {
+          int currentLine = new Throwable().getStackTrace()[0].getLineNumber();
+          System.err.println("Semantic error: " + currentLine + ": " + var.image + " nao eh um inteiro");
+          System.exit(1);
+        }
+      }
+    |
+    flutuante = <NUM>
+      {
+        result = Tabela.searchTipe(var.image);
+        if (result.equals("FLOAT") && valida){
+          Tabela.insere (var.image,flutuante.image,"FLOAT");
+        }
+        else if(valida){
+          int currentLine = new Throwable().getStackTrace()[0].getLineNumber();
+          System.err.println("Semantic error: " + currentLine + ": " + var.image + " nao eh um float");
+          System.exit(1);
+        }
+      }
+    | 
+    bool = <SENTENCA_BOOLEANA>
+      {
+        result = Tabela.searchTipe(var.image);
+
+        if(result.equals("BOOL") && valida){
+          Tabela.insere (var.image,bool.image,"BOOL");
+        }
+        else if(valida){
+          int currentLine = new Throwable().getStackTrace()[0].getLineNumber();
+          System.err.println("Semantic error: " + currentLine + ": " + var.image + " nao eh um booleano");
+          System.exit(1);
+        }
+      } 
+
+    |
+    nome = <PALAVRA>
+      {
+        result = Tabela.searchTipe(var.image);
+        if(result.equals("STRING") && valida){
+          Tabela.insere (var.image,nome.image,"STRING");
+        }
+        else if(valida){
+          int currentLine = new Throwable().getStackTrace()[0].getLineNumber();
+          System.err.println("Semantic error: " + currentLine + ": " + var.image + " nao eh uma string");
+          System.exit(1);
+        }
+      }
+    |   
+    ident = <IDENTIFICADOR>
+      {
+        result = Tabela.searchTipe(ident.image);
+        result2 = Tabela.searchTipe(var.image);
+        if(result.equals(result2) && valida){
+          Tabela.insere (var.image, Tabela.searchValue(ident.image), result);
+        }
+        else if(valida){
+          int currentLine = new Throwable().getStackTrace()[0].getLineNumber();
+          System.err.println("Semantic error: " + currentLine + ": " + var.image + " nao eh do mesmo tipo que " + ident.image);
+          System.exit(1);
+        }
+      }
+    )
+    //FALTA TRATAR DOUBLE, CHAR, BYTE
+}
